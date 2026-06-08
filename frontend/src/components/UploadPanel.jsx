@@ -19,7 +19,7 @@ export default function UploadPanel({ onUpload }) {
     form.append('file', file)
 
     try {
-      const res = await fetch('http://localhost:8000/upload', {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/upload`, {
         method: 'POST',
         body: form,
       })
