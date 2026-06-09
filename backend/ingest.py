@@ -5,10 +5,9 @@ from db import store_chunks
 
 
 def extract_text(file_path: str) -> tuple[str, int]:
-    doc = fitz.open(file_path)
-    text = "".join(page.get_text() for page in doc)
-    page_count = len(doc)
-    doc.close()
+    with fitz.open(file_path) as doc:
+        text = "".join(page.get_text() for page in doc)
+        page_count = len(doc)
     return text, page_count
 
 

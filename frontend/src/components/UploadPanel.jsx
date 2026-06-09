@@ -101,7 +101,7 @@ export default function UploadPanel({ onUpload, session, onReset }) {
 
       {session && (
         <button
-          onClick={onReset}
+          onClick={() => { setError(null); onReset() }}
           className="text-xs text-gray-400 dark:text-[#484f58] hover:text-gray-600 dark:hover:text-[#8b949e] transition-colors text-left"
         >
           Upload a different PDF
