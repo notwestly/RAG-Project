@@ -7,7 +7,10 @@ const SUGGESTIONS = [
   'What are the main conclusions?',
 ]
 
-export default function ChatWindow({ sessionId, filename, onFileDrop }) {
+const MAX_CHARS = 500
+const MAX_USER_TURNS = 20
+
+export default function ChatWindow({ sessionId, docs = [], onFileDrop }) {
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [streaming, setStreaming] = useState(false)
@@ -15,6 +18,12 @@ export default function ChatWindow({ sessionId, filename, onFileDrop }) {
   const bottomRef = useRef(null)
   const inputRef = useRef(null)
   const dropInputRef = useRef(null)
+
+  const userTurns = messages.filter(m => m.role === 'user').length
+  const sessionLimitReached = userTurns >= MAX_USER_TURNS
+  const charsLeft = MAX_CHARS - input.length
+  const nearLimit = input.length >= MAX_CHARS * 0.8
+  const atLimit = input.length >= MAX_CHARS
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -24,7 +33,6 @@ export default function ChatWindow({ sessionId, filename, onFileDrop }) {
     if (sessionId) inputRef.current?.focus()
   }, [sessionId])
 
-  // Reset messages when session changes
   useEffect(() => {
     setMessages([])
     setInput('')
@@ -33,7 +41,7 @@ export default function ChatWindow({ sessionId, filename, onFileDrop }) {
   async function sendMessage(e) {
     e?.preventDefault()
     const text = input.trim()
-    if (!text || streaming || !sessionId) return
+    if (!text || streaming || !sessionId || sessionLimitReached) return
 
     const userMessage = { role: 'user', content: text }
     const nextMessages = [...messages, userMessage]
@@ -61,7 +69,8 @@ export default function ChatWindow({ sessionId, filename, onFileDrop }) {
         const lines = decoder.decode(value).split('\n')
         for (const line of lines) {
           if (!line.startsWith('data: ')) continue
-          const token = line.slice(6)
+          let token
+          try { token = JSON.parse(line.slice(6)) } catch { continue }
           if (token === '[DONE]' || token === '[ERROR]') continue
           assistantText += token
           setMessages([...nextMessages, { role: 'assistant', content: assistantText }])
@@ -74,11 +83,11 @@ export default function ChatWindow({ sessionId, filename, onFileDrop }) {
     }
   }
 
-  function handleDropZone(e) {
+  function handleAreaDrop(e) {
     e.preventDefault()
     setDragOver(false)
     if (sessionId || !onFileDrop) return
-    onFileDrop(e.dataTransfer.files[0])
+    onFileDrop(e.dataTransfer.files)
   }
 
   function useSuggestion(text) {
@@ -90,59 +99,74 @@ export default function ChatWindow({ sessionId, filename, onFileDrop }) {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Filename bar — only when session active */}
-      {sessionId && filename && (
+      {/* Doc bar — only when session active */}
+      {sessionId && docs.length > 0 && (
         <div className="border-b border-gray-200 dark:border-[#21262d] px-5 py-3 shrink-0">
           <p className="text-sm text-gray-500 dark:text-[#8b949e] truncate">
-            Chatting with <span className="text-gray-900 dark:text-white font-medium">{filename}</span>
+            {docs.length === 1
+              ? <>Chatting with <span className="text-gray-900 dark:text-white font-medium">{docs[0].name}</span></>
+              : <>Chatting with <span className="text-gray-900 dark:text-white font-medium">{docs.length} documents</span></>
+            }
           </p>
         </div>
       )}
 
       {/* Message list or empty state */}
-      <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-3 min-h-0">
+      <div
+        className={`flex-1 overflow-y-auto p-5 flex flex-col gap-3 min-h-0 transition-colors
+          ${!sessionId && dragOver ? 'bg-blue-50/40 dark:bg-blue-950/10' : ''}`}
+        onDragOver={(e) => { e.preventDefault(); if (!sessionId) setDragOver(true) }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={handleAreaDrop}
+      >
         {showEmptyState ? (
-          <div
-            className={`flex flex-col items-center justify-center h-full gap-4 text-center px-6 transition-colors
-              ${!sessionId && dragOver ? 'bg-blue-50/40 dark:bg-blue-950/10' : ''}`}
-            onClick={() => !sessionId && onFileDrop && dropInputRef.current?.click()}
-            onDragOver={(e) => { e.preventDefault(); if (!sessionId) setDragOver(true) }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={handleDropZone}
-          >
-            <input ref={dropInputRef} type="file" accept="application/pdf" className="hidden"
-              onChange={(e) => { if (!sessionId && onFileDrop) onFileDrop(e.target.files[0]) }} />
-            <svg className="w-12 h-12 text-gray-300 dark:text-[#30363d]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-            </svg>
-            <div>
-              <h2 className="text-lg font-semibold text-gray-800 dark:text-[#e6edf3]">
-                Ask anything about your document
-              </h2>
-              <p className="text-sm text-gray-400 dark:text-[#484f58] mt-1">
-                {sessionId ? 'Your document is ready' : 'Upload a PDF to get started'}
-              </p>
-            </div>
-            {sessionId && (
-              <div className="flex flex-wrap gap-2 justify-center mt-2">
-                {SUGGESTIONS.map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => useSuggestion(s)}
-                    className="px-3 py-1.5 rounded-full text-xs border
-                               border-gray-200 dark:border-[#30363d]
-                               bg-white dark:bg-[#1c2128]
-                               text-gray-600 dark:text-[#8b949e]
-                               hover:border-blue-400 dark:hover:border-blue-500
-                               hover:text-blue-600 dark:hover:text-blue-400
-                               transition-colors"
-                  >
-                    {s}
-                  </button>
-                ))}
+          <div className="flex flex-col items-center justify-center h-full">
+            <input
+              ref={dropInputRef}
+              type="file"
+              accept="application/pdf"
+              className="hidden"
+              onChange={(e) => { if (!sessionId && onFileDrop) onFileDrop(e.target.files) }}
+            />
+            <div
+              onClick={() => !sessionId && onFileDrop && dropInputRef.current?.click()}
+              className={`flex flex-col items-center gap-4 text-center px-8 py-8
+                          rounded-2xl border border-gray-200 dark:border-[#30363d]
+                          bg-white dark:bg-[#161b22] w-80
+                          ${!sessionId && onFileDrop ? 'cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 transition-colors' : ''}`}
+            >
+              <svg className="w-9 h-9 text-gray-300 dark:text-[#30363d]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              <div>
+                <h2 className="text-sm font-semibold text-gray-800 dark:text-[#e6edf3]">
+                  Ask anything about your document
+                </h2>
+                <p className="text-xs text-gray-400 dark:text-[#484f58] mt-1">
+                  {sessionId ? 'Your document is ready' : 'Upload a PDF to get started'}
+                </p>
               </div>
-            )}
+              {sessionId && (
+                <div className="flex flex-wrap gap-2 justify-center">
+                  {SUGGESTIONS.map((s) => (
+                    <button
+                      key={s}
+                      onClick={(e) => { e.stopPropagation(); useSuggestion(s) }}
+                      className="px-3 py-1.5 rounded-full text-xs border
+                                 border-gray-200 dark:border-[#30363d]
+                                 bg-gray-50 dark:bg-[#1c2128]
+                                 text-gray-600 dark:text-[#8b949e]
+                                 hover:border-blue-400 dark:hover:border-blue-500
+                                 hover:text-blue-600 dark:hover:text-blue-400
+                                 transition-colors"
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         ) : (
           messages.map((msg, i) => (
@@ -157,29 +181,56 @@ export default function ChatWindow({ sessionId, filename, onFileDrop }) {
         <div ref={bottomRef} />
       </div>
 
-      {/* Input bar — always rendered, disabled until session exists */}
-      <form onSubmit={sendMessage} className="border-t border-gray-200 dark:border-[#21262d] p-4 flex gap-2 shrink-0 bg-white dark:bg-[#0d1117]">
-        <input
-          ref={inputRef}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          disabled={!sessionId || streaming}
-          placeholder={sessionId ? 'Ask a question about the document…' : 'Upload a PDF to start chatting…'}
-          className="flex-1 bg-gray-100 dark:bg-[#161b22] border border-gray-200 dark:border-[#30363d]
-                     rounded-xl px-4 py-2.5 text-sm text-gray-900 dark:text-white
-                     placeholder-gray-400 dark:placeholder-[#484f58]
-                     outline-none focus:border-blue-500 transition-colors
-                     disabled:opacity-50 disabled:cursor-not-allowed"
-        />
-        <button
-          type="submit"
-          disabled={!input.trim() || streaming || !sessionId}
-          className="bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed
-                     text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors shrink-0"
-        >
-          Send
-        </button>
-      </form>
+      {/* Input area */}
+      {sessionLimitReached ? (
+        <div className="border-t border-gray-200 dark:border-[#21262d] px-5 py-4 shrink-0 bg-white dark:bg-[#0d1117]">
+          <div className="rounded-xl border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/20 px-4 py-3 text-center">
+            <p className="text-xs font-medium text-amber-700 dark:text-amber-400">
+              Session limit reached ({MAX_USER_TURNS} messages)
+            </p>
+            <p className="text-xs text-amber-600/70 dark:text-amber-500/60 mt-0.5">
+              Click "Start over" in the sidebar to begin a new session.
+            </p>
+          </div>
+        </div>
+      ) : (
+        <form onSubmit={sendMessage} className="border-t border-gray-200 dark:border-[#21262d] p-4 flex flex-col gap-1.5 shrink-0 bg-white dark:bg-[#0d1117]">
+          <div className="flex gap-2">
+            <input
+              ref={inputRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value.slice(0, MAX_CHARS))}
+              disabled={!sessionId || streaming}
+              placeholder={sessionId ? 'Ask a question about the document…' : 'Upload a PDF to start chatting…'}
+              className="flex-1 bg-gray-100 dark:bg-[#161b22] border border-gray-200 dark:border-[#30363d]
+                         rounded-xl px-4 py-2.5 text-sm text-gray-900 dark:text-white
+                         placeholder-gray-400 dark:placeholder-[#484f58]
+                         outline-none focus:border-blue-500 transition-colors
+                         disabled:opacity-50 disabled:cursor-not-allowed"
+            />
+            <button
+              type="submit"
+              disabled={!input.trim() || streaming || !sessionId}
+              className="bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed
+                         text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors shrink-0"
+            >
+              Send
+            </button>
+          </div>
+          {/* Character counter — visible only while typing */}
+          {sessionId && input.length > 0 && (
+            <p className={`text-right text-xs pr-1 transition-colors
+              ${atLimit
+                ? 'text-red-500 dark:text-red-400 font-medium'
+                : nearLimit
+                  ? 'text-amber-500 dark:text-amber-400'
+                  : 'text-gray-300 dark:text-[#30363d]'
+              }`}>
+              {charsLeft} characters remaining
+            </p>
+          )}
+        </form>
+      )}
     </div>
   )
 }

@@ -10,8 +10,11 @@ def embed_query(query: str) -> list[float]:
 
 
 def rerank_chunks(query: str, chunks: list[str], top_k: int = TOP_K_RERANK) -> list[str]:
+    if not chunks:
+        return []
     client = voyageai.Client(api_key=VOYAGE_API_KEY)
-    result = client.rerank(query, chunks, model="rerank-2", top_k=top_k)
+    effective_top_k = min(top_k, len(chunks))
+    result = client.rerank(query, chunks, model="rerank-2", top_k=effective_top_k)
     return [r.document for r in result.results]
 
 

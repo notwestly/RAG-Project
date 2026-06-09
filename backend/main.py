@@ -1,7 +1,11 @@
 import uuid
 import tempfile
 import os
-from fastapi import FastAPI, UploadFile, File, HTTPException
+import json
+import logging
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+
+logging.basicConfig(level=logging.INFO)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -32,11 +36,11 @@ class ChatRequest(BaseModel):
 
 
 @app.post("/upload")
-async def upload_pdf(file: UploadFile = File(...)):
+async def upload_pdf(file: UploadFile = File(...), session_id: str = Form(None)):
     if file.content_type != "application/pdf":
         raise HTTPException(status_code=400, detail="Only PDF files are accepted")
 
-    session_id = str(uuid.uuid4())
+    session_id = session_id or str(uuid.uuid4())
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
         content = await file.read()
@@ -65,15 +69,16 @@ async def chat(request: ChatRequest):
     try:
         chunks = retrieve(last_message, request.session_id)
     except Exception as e:
+        logging.exception("Retrieval failed")
         raise HTTPException(status_code=502, detail=f"Retrieval failed: {str(e)}")
 
     def generate():
         try:
             for token in stream_response(chunks, request.messages):
-                yield f"data: {token}\n\n"
+                yield f"data: {json.dumps(token)}\n\n"
         except Exception:
-            yield "data: [ERROR]\n\n"
-        yield "data: [DONE]\n\n"
+            yield 'data: "[ERROR]"\n\n'
+        yield 'data: "[DONE]"\n\n'
 
     return StreamingResponse(generate(), media_type="text/event-stream")
 

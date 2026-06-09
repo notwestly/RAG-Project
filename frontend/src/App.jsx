@@ -11,20 +11,32 @@ export default function App() {
     localStorage.setItem('theme', dark ? 'dark' : 'light')
   }, [dark])
 
-  function handleUpload(id, name, chunkCount, pageCount) {
-    setSession({ id, name, chunkCount, pageCount })
+  function handleUpload(sessionId, name, chunkCount, pageCount) {
+    setSession(prev => {
+      const newDoc = { name, chunkCount, pageCount }
+      if (prev?.id === sessionId) {
+        return { ...prev, docs: [...prev.docs, newDoc] }
+      }
+      return { id: sessionId, docs: [newDoc] }
+    })
   }
 
-  async function handleFileDrop(file) {
-    if (!file || file.type !== 'application/pdf') return
-    const form = new FormData()
-    form.append('file', file)
-    try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/upload`, { method: 'POST', body: form })
-      if (!res.ok) return
-      const { session_id, chunk_count, page_count } = await res.json()
-      handleUpload(session_id, file.name, chunk_count, page_count)
-    } catch { /* silent — user can use the sidebar if this fails */ }
+  async function handleFileDrop(fileList) {
+    const files = Array.from(fileList).filter(f => f.type === 'application/pdf')
+    if (files.length === 0) return
+    let currentSessionId = session?.id
+    for (const file of files) {
+      const form = new FormData()
+      form.append('file', file)
+      if (currentSessionId) form.append('session_id', currentSessionId)
+      try {
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/upload`, { method: 'POST', body: form })
+        if (!res.ok) return
+        const { session_id, chunk_count, page_count } = await res.json()
+        currentSessionId = session_id
+        handleUpload(session_id, file.name, chunk_count, page_count)
+      } catch { /* silent */ }
+    }
   }
 
   return (
@@ -59,7 +71,11 @@ export default function App() {
         </aside>
 
         <main className="flex-1 overflow-hidden bg-gray-50 dark:bg-[#0d1117]">
-          <ChatWindow sessionId={session?.id} filename={session?.name} onFileDrop={handleFileDrop} />
+          <ChatWindow
+            sessionId={session?.id}
+            docs={session?.docs ?? []}
+            onFileDrop={handleFileDrop}
+          />
         </main>
       </div>
     </div>

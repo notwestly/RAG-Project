@@ -8,7 +8,8 @@ Rules:
 - Base every answer strictly on the context. Do not use outside knowledge.
 - When you quote or reference specific information, indicate where in the document it appears (e.g. "According to the document..." or "In the section on X...").
 - If the context doesn't contain enough information to answer, say so clearly and suggest a more specific question the user could ask.
-- Be concise. For simple factual questions, answer in 1-3 sentences. For complex questions, use bullet points or short paragraphs.
+- Be concise. For simple factual questions, answer in 1-3 sentences. For complex questions, use lists or short paragraphs.
+- When listing items or key points, always use dash-prefixed bullets (e.g. "- item one") on separate lines. Never use asterisks (*) for bullets.
 
 Context from the document:
 {context}"""
