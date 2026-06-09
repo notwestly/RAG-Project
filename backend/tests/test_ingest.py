@@ -53,7 +53,7 @@ def test_chunk_text_short_text_gives_one_chunk():
 
 
 def test_ingest_pdf_raises_on_empty_text():
-    with patch("ingest.extract_text", return_value="   "):
+    with patch("ingest.extract_text", return_value=("   ", 1)):
         with patch("ingest.store_chunks"):
             from ingest import ingest_pdf
             with pytest.raises(ValueError, match="No extractable text"):
@@ -67,13 +67,14 @@ def test_ingest_pdf_returns_chunk_count():
     mock_voyage_result = MagicMock()
     mock_voyage_result.embeddings = [fake_embedding]
 
-    with patch("ingest.extract_text", return_value=fake_text), \
+    with patch("ingest.extract_text", return_value=(fake_text, 3)), \
          patch("ingest.voyageai.Client") as mock_voyage_cls, \
          patch("ingest.store_chunks") as mock_store:
 
         mock_voyage_cls.return_value.embed.return_value = mock_voyage_result
         from ingest import ingest_pdf
-        count = ingest_pdf("/fake/path.pdf", "session-1", "fake.pdf")
+        chunk_count, page_count = ingest_pdf("/fake/path.pdf", "session-1", "fake.pdf")
 
-    assert count >= 1
+    assert chunk_count >= 1
+    assert page_count == 3
     mock_store.assert_called_once()
