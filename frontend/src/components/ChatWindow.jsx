@@ -7,12 +7,14 @@ const SUGGESTIONS = [
   'What are the main conclusions?',
 ]
 
-export default function ChatWindow({ sessionId, filename }) {
+export default function ChatWindow({ sessionId, filename, onFileDrop }) {
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [streaming, setStreaming] = useState(false)
+  const [dragOver, setDragOver] = useState(false)
   const bottomRef = useRef(null)
   const inputRef = useRef(null)
+  const dropInputRef = useRef(null)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -72,6 +74,13 @@ export default function ChatWindow({ sessionId, filename }) {
     }
   }
 
+  function handleDropZone(e) {
+    e.preventDefault()
+    setDragOver(false)
+    if (sessionId || !onFileDrop) return
+    onFileDrop(e.dataTransfer.files[0])
+  }
+
   function useSuggestion(text) {
     setInput(text)
     inputRef.current?.focus()
@@ -93,7 +102,16 @@ export default function ChatWindow({ sessionId, filename }) {
       {/* Message list or empty state */}
       <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-3 min-h-0">
         {showEmptyState ? (
-          <div className="flex flex-col items-center justify-center h-full gap-4 text-center px-6">
+          <div
+            className={`flex flex-col items-center justify-center h-full gap-4 text-center px-6 transition-colors
+              ${!sessionId && dragOver ? 'bg-blue-50/40 dark:bg-blue-950/10' : ''}`}
+            onClick={() => !sessionId && onFileDrop && dropInputRef.current?.click()}
+            onDragOver={(e) => { e.preventDefault(); if (!sessionId) setDragOver(true) }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={handleDropZone}
+          >
+            <input ref={dropInputRef} type="file" accept="application/pdf" className="hidden"
+              onChange={(e) => { if (!sessionId && onFileDrop) onFileDrop(e.target.files[0]) }} />
             <svg className="w-12 h-12 text-gray-300 dark:text-[#30363d]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                 d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />

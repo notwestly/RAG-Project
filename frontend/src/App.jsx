@@ -15,6 +15,18 @@ export default function App() {
     setSession({ id, name, chunkCount, pageCount })
   }
 
+  async function handleFileDrop(file) {
+    if (!file || file.type !== 'application/pdf') return
+    const form = new FormData()
+    form.append('file', file)
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/upload`, { method: 'POST', body: form })
+      if (!res.ok) return
+      const { session_id, chunk_count, page_count } = await res.json()
+      handleUpload(session_id, file.name, chunk_count, page_count)
+    } catch { /* silent — user can use the sidebar if this fails */ }
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#0d1117] text-gray-900 dark:text-[#e6edf3] flex flex-col">
       <header className="border-b border-gray-200 dark:border-[#21262d] px-6 py-3 flex items-center gap-3 shrink-0 bg-white dark:bg-[#0d1117]">
@@ -47,7 +59,7 @@ export default function App() {
         </aside>
 
         <main className="flex-1 overflow-hidden bg-gray-50 dark:bg-[#0d1117]">
-          <ChatWindow sessionId={session?.id} filename={session?.name} />
+          <ChatWindow sessionId={session?.id} filename={session?.name} onFileDrop={handleFileDrop} />
         </main>
       </div>
     </div>
