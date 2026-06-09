@@ -23,8 +23,12 @@ export default function UploadPanel({ onUpload, session, onReset }) {
         body: form,
       })
       if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.detail || 'Upload failed')
+        let message = `Upload failed (${res.status})`
+        try {
+          const data = await res.json()
+          message = data.detail || message
+        } catch { /* response wasn't JSON */ }
+        throw new Error(message)
       }
       const { session_id, chunk_count, page_count } = await res.json()
       onUpload(session_id, file.name, chunk_count, page_count)
