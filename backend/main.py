@@ -44,7 +44,7 @@ async def upload_pdf(file: UploadFile = File(...)):
         tmp_path = tmp.name
 
     try:
-        chunk_count = ingest_pdf(tmp_path, session_id, file.filename)
+        chunk_count, page_count = ingest_pdf(tmp_path, session_id, file.filename)
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
@@ -52,7 +52,7 @@ async def upload_pdf(file: UploadFile = File(...)):
     finally:
         os.unlink(tmp_path)
 
-    return {"session_id": session_id, "chunk_count": chunk_count}
+    return {"session_id": session_id, "chunk_count": chunk_count, "page_count": page_count}
 
 
 @app.post("/chat")
