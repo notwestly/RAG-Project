@@ -4,11 +4,12 @@ from config import VOYAGE_API_KEY, CHUNK_SIZE, CHUNK_OVERLAP
 from db import store_chunks
 
 
-def extract_text(file_path: str) -> str:
+def extract_text(file_path: str) -> tuple[str, int]:
     doc = fitz.open(file_path)
     text = "".join(page.get_text() for page in doc)
+    page_count = len(doc)
     doc.close()
-    return text
+    return text, page_count
 
 
 def chunk_text(text: str, chunk_size: int = CHUNK_SIZE, overlap: int = CHUNK_OVERLAP) -> list[str]:
@@ -27,8 +28,8 @@ def embed_chunks(chunks: list[str]) -> list[list[float]]:
     return result.embeddings
 
 
-def ingest_pdf(file_path: str, session_id: str, filename: str) -> int:
-    text = extract_text(file_path)
+def ingest_pdf(file_path: str, session_id: str, filename: str) -> tuple[int, int]:
+    text, page_count = extract_text(file_path)
     if not text.strip():
         raise ValueError("No extractable text found in PDF")
 
@@ -46,4 +47,4 @@ def ingest_pdf(file_path: str, session_id: str, filename: str) -> int:
     ]
 
     store_chunks(records)
-    return len(records)
+    return len(records), page_count
