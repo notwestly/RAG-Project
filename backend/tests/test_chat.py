@@ -46,4 +46,4 @@ def test_stream_response_uses_correct_model():
         list(stream_response([], [{"role": "user", "content": "hi"}]))
 
     call_kwargs = mock_cls.return_value.messages.stream.call_args[1]
-    assert call_kwargs["model"] == "claude-sonnet-4-6"
+    assert call_kwargs["model"] == "claude-haiku-4-5-20251001"
