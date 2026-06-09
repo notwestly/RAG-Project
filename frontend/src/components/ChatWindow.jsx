@@ -19,7 +19,6 @@ export default function ChatWindow({ sessionId, docs = [], onFileDrop, onReset }
   const bottomRef = useRef(null)
   const inputRef = useRef(null)
   const dropInputRef = useRef(null)
-  const mobileAddRef = useRef(null)
 
   const userTurns = messages.filter(m => m.role === 'user').length
   const sessionLimitReached = userTurns >= MAX_USER_TURNS
@@ -114,21 +113,21 @@ export default function ChatWindow({ sessionId, docs = [], onFileDrop, onReset }
           {docs.length < MAX_DOCS && onFileDrop && (
             <>
               <input
-                ref={mobileAddRef}
+                id="mobile-add-input"
                 type="file"
                 accept="application/pdf"
                 multiple
                 className="hidden"
                 onChange={(e) => onFileDrop(e.target.files)}
               />
-              <button
-                onClick={() => mobileAddRef.current?.click()}
+              <label
+                htmlFor="mobile-add-input"
                 className="md:hidden shrink-0 text-xs text-blue-500 dark:text-blue-400 font-medium
                            px-2.5 py-1 rounded-lg border border-blue-200 dark:border-blue-900/50
-                           hover:bg-blue-50 dark:hover:bg-blue-950/20 active:scale-95 transition-all"
+                           hover:bg-blue-50 dark:hover:bg-blue-950/20 active:scale-95 transition-all cursor-pointer"
               >
                 + Add
-              </button>
+              </label>
             </>
           )}
           {/* Mobile: start over */}
@@ -155,28 +154,27 @@ export default function ChatWindow({ sessionId, docs = [], onFileDrop, onReset }
       >
         {showEmptyState ? (
           <div className="flex flex-col items-center justify-center h-full px-2">
-            {/* Hidden file input for empty-state upload */}
-            <input
-              ref={dropInputRef}
-              type="file"
-              accept="application/pdf"
-              multiple
-              className="hidden"
-              onChange={(e) => { if (!sessionId && onFileDrop) onFileDrop(e.target.files) }}
-            />
-
-            <div
-              onClick={() => !sessionId && onFileDrop && dropInputRef.current?.click()}
-              className={`flex flex-col items-center gap-5 text-center px-6 py-8
-                          rounded-2xl border border-gray-200 dark:border-[#30363d]
-                          bg-white dark:bg-[#161b22] w-full max-w-sm
-                          ${!sessionId && onFileDrop
-                            ? 'cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 active:scale-[0.98] transition-all'
-                            : ''}`}
-            >
-              {!sessionId ? (
-                <>
-                  {/* Upload icon */}
+            {!sessionId ? (
+              /* ── No session: label triggers file input natively (works on mobile) ── */
+              <>
+                <input
+                  id="drop-file-input"
+                  ref={dropInputRef}
+                  type="file"
+                  accept="application/pdf"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => { if (onFileDrop) onFileDrop(e.target.files) }}
+                />
+                <label
+                  htmlFor={onFileDrop ? 'drop-file-input' : undefined}
+                  className={`flex flex-col items-center gap-5 text-center px-6 py-8
+                              rounded-2xl border border-gray-200 dark:border-[#30363d]
+                              bg-white dark:bg-[#161b22] w-full max-w-sm
+                              ${onFileDrop
+                                ? 'cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 active:scale-[0.98] transition-all'
+                                : ''}`}
+                >
                   <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-950/30 flex items-center justify-center">
                     <svg className="w-7 h-7 text-blue-500 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
@@ -199,42 +197,44 @@ export default function ChatWindow({ sessionId, docs = [], onFileDrop, onReset }
                       or drag &amp; drop a PDF here · up to 5 files
                     </p>
                   </div>
-                </>
-              ) : (
-                <>
-                  <svg className="w-9 h-9 text-gray-300 dark:text-[#30363d]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                  </svg>
-                  <div>
-                    <h2 className="text-sm font-semibold text-gray-800 dark:text-[#e6edf3]">
-                      Ask anything about your document
-                    </h2>
-                    <p className="text-xs text-gray-400 dark:text-[#484f58] mt-1">
-                      Your document is ready
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-2 justify-center">
-                    {SUGGESTIONS.map((s) => (
-                      <button
-                        key={s}
-                        onClick={(e) => { e.stopPropagation(); useSuggestion(s) }}
-                        className="px-3 py-2 rounded-full text-xs border
-                                   border-gray-200 dark:border-[#30363d]
-                                   bg-gray-50 dark:bg-[#1c2128]
-                                   text-gray-600 dark:text-[#8b949e]
-                                   hover:border-blue-400 dark:hover:border-blue-500
-                                   hover:text-blue-600 dark:hover:text-blue-400
-                                   active:scale-95
-                                   transition-all"
-                      >
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
+                </label>
+              </>
+            ) : (
+              /* ── Session active: show suggestion pills ── */
+              <div className="flex flex-col items-center gap-5 text-center px-6 py-8
+                              rounded-2xl border border-gray-200 dark:border-[#30363d]
+                              bg-white dark:bg-[#161b22] w-full max-w-sm">
+                <svg className="w-9 h-9 text-gray-300 dark:text-[#30363d]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+                <div>
+                  <h2 className="text-sm font-semibold text-gray-800 dark:text-[#e6edf3]">
+                    Ask anything about your document
+                  </h2>
+                  <p className="text-xs text-gray-400 dark:text-[#484f58] mt-1">
+                    Your document is ready
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2 justify-center">
+                  {SUGGESTIONS.map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => useSuggestion(s)}
+                      className="px-3 py-2 rounded-full text-xs border
+                                 border-gray-200 dark:border-[#30363d]
+                                 bg-gray-50 dark:bg-[#1c2128]
+                                 text-gray-600 dark:text-[#8b949e]
+                                 hover:border-blue-400 dark:hover:border-blue-500
+                                 hover:text-blue-600 dark:hover:text-blue-400
+                                 active:scale-95 transition-all"
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           messages.map((msg, i) => (

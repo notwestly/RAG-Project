@@ -82,8 +82,8 @@ export default function UploadPanel({ onUpload, session, onReset }) {
 
       {/* Upload zone — hidden once 5 docs loaded */}
       {canAddMore && (
-        <div
-          onClick={() => inputRef.current.click()}
+        <label
+          htmlFor="upload-panel-input"
           onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
           onDragLeave={() => setDragging(false)}
           onDrop={(e) => {
@@ -99,6 +99,7 @@ export default function UploadPanel({ onUpload, session, onReset }) {
                       }`}
         >
           <input
+            id="upload-panel-input"
             ref={inputRef}
             type="file"
             accept="application/pdf"
@@ -132,7 +133,7 @@ export default function UploadPanel({ onUpload, session, onReset }) {
               </div>
             </div>
           )}
-        </div>
+        </label>
       )}
 
       {session && (
