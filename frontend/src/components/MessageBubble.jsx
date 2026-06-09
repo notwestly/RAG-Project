@@ -6,7 +6,7 @@ export default function MessageBubble({ role, content, streaming }) {
         className={`max-w-[78%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap
           ${isUser
             ? 'bg-blue-600 text-white rounded-br-sm'
-            : 'bg-gray-800 text-gray-100 rounded-bl-sm'
+            : 'bg-white dark:bg-[#1c2128] text-gray-800 dark:text-[#e6edf3] border border-gray-200 dark:border-[#30363d] rounded-bl-sm'
           }`}
       >
         {content}
