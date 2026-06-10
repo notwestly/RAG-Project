@@ -5,6 +5,7 @@ import ChatWindow from './components/ChatWindow'
 export default function App() {
   const [dark, setDark] = useState(() => localStorage.getItem('theme') !== 'light')
   const [session, setSession] = useState(null)
+  const [uploading, setUploading] = useState(false)
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark)
@@ -24,6 +25,7 @@ export default function App() {
   async function handleFileDrop(fileList) {
     const files = Array.from(fileList).filter(f => f.type === 'application/pdf')
     if (files.length === 0) return
+    setUploading(true)
     let currentSessionId = session?.id
     for (const file of files) {
       const form = new FormData()
@@ -31,12 +33,13 @@ export default function App() {
       if (currentSessionId) form.append('session_id', currentSessionId)
       try {
         const res = await fetch(`${import.meta.env.VITE_API_URL}/upload`, { method: 'POST', body: form })
-        if (!res.ok) return
+        if (!res.ok) { setUploading(false); return }
         const { session_id, chunk_count, page_count } = await res.json()
         currentSessionId = session_id
         handleUpload(session_id, file.name, chunk_count, page_count)
       } catch { /* silent */ }
     }
+    setUploading(false)
   }
 
   return (
@@ -83,6 +86,7 @@ export default function App() {
             docs={session?.docs ?? []}
             onFileDrop={handleFileDrop}
             onReset={() => setSession(null)}
+            uploading={uploading}
           />
         </main>
       </div>

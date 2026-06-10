@@ -11,7 +11,7 @@ const MAX_CHARS = 500
 const MAX_USER_TURNS = 20
 const MAX_DOCS = 5
 
-export default function ChatWindow({ sessionId, docs = [], onFileDrop, onReset }) {
+export default function ChatWindow({ sessionId, docs = [], onFileDrop, onReset, uploading = false }) {
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [streaming, setStreaming] = useState(false)
@@ -101,6 +101,15 @@ export default function ChatWindow({ sessionId, docs = [], onFileDrop, onReset }
   return (
     <div className="flex flex-col h-full">
       {/* Doc bar — only when session active */}
+      {/* Processing banner — shown when adding more docs to an active session */}
+      {sessionId && uploading && (
+        <div className="border-b border-blue-200 dark:border-blue-900/40 px-4 py-2 shrink-0 flex items-center gap-2
+                        bg-blue-50 dark:bg-blue-950/20">
+          <div className="w-3.5 h-3.5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin shrink-0" />
+          <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">Processing document…</p>
+        </div>
+      )}
+
       {sessionId && docs.length > 0 && (
         <div className="border-b border-gray-200 dark:border-[#21262d] px-4 md:px-5 py-2.5 md:py-3 shrink-0 flex items-center gap-2">
           <p className="text-sm text-gray-500 dark:text-[#8b949e] truncate flex-1 min-w-0">
@@ -155,50 +164,74 @@ export default function ChatWindow({ sessionId, docs = [], onFileDrop, onReset }
         {showEmptyState ? (
           <div className="flex flex-col items-center justify-center h-full px-2">
             {!sessionId ? (
-              /* ── No session: label triggers file input natively (works on mobile) ── */
-              <>
-                <input
-                  id="drop-file-input"
-                  ref={dropInputRef}
-                  type="file"
-                  accept="application/pdf"
-                  multiple
-                  className="hidden"
-                  onChange={(e) => { if (onFileDrop) onFileDrop(e.target.files) }}
-                />
-                <label
-                  htmlFor={onFileDrop ? 'drop-file-input' : undefined}
-                  className={`flex flex-col items-center gap-5 text-center px-6 py-8
-                              rounded-2xl border border-gray-200 dark:border-[#30363d]
-                              bg-white dark:bg-[#161b22] w-full max-w-sm
-                              ${onFileDrop
-                                ? 'cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 active:scale-[0.98] transition-all'
-                                : ''}`}
-                >
+              uploading ? (
+                /* ── Uploading: processing indicator ── */
+                <div className="flex flex-col items-center gap-5 text-center px-6 py-8
+                                rounded-2xl border border-blue-200 dark:border-blue-800/50
+                                bg-white dark:bg-[#161b22] w-full max-w-sm">
                   <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-950/30 flex items-center justify-center">
-                    <svg className="w-7 h-7 text-blue-500 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                        d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                    </svg>
+                    <div className="w-7 h-7 border-[2.5px] border-blue-500 border-t-transparent rounded-full animate-spin" />
                   </div>
                   <div className="space-y-1.5">
                     <h2 className="text-base font-semibold text-gray-800 dark:text-[#e6edf3]">
-                      Ask anything about your document
+                      Processing your document…
                     </h2>
                     <p className="text-sm text-gray-400 dark:text-[#484f58] leading-relaxed">
-                      Upload a PDF and get instant AI-powered answers from your documents
+                      Indexing content and preparing for chat
                     </p>
                   </div>
-                  <div className="w-full pt-3 border-t border-gray-100 dark:border-[#21262d]">
-                    <p className="text-sm font-medium text-blue-600 dark:text-blue-400">
-                      Tap to attach a file
-                    </p>
-                    <p className="text-xs text-gray-400 dark:text-[#484f58] mt-0.5">
-                      or drag &amp; drop a PDF here · up to 5 files
-                    </p>
+                  <div className="flex gap-1.5 justify-center">
+                    <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-bounce [animation-delay:0ms]" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-bounce [animation-delay:150ms]" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-bounce [animation-delay:300ms]" />
                   </div>
-                </label>
-              </>
+                </div>
+              ) : (
+                /* ── No session: label triggers file input natively (works on mobile) ── */
+                <>
+                  <input
+                    id="drop-file-input"
+                    ref={dropInputRef}
+                    type="file"
+                    accept="application/pdf"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => { if (onFileDrop) onFileDrop(e.target.files) }}
+                  />
+                  <label
+                    htmlFor={onFileDrop ? 'drop-file-input' : undefined}
+                    className={`flex flex-col items-center gap-5 text-center px-6 py-8
+                                rounded-2xl border border-gray-200 dark:border-[#30363d]
+                                bg-white dark:bg-[#161b22] w-full max-w-sm
+                                ${onFileDrop
+                                  ? 'cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 active:scale-[0.98] transition-all'
+                                  : ''}`}
+                  >
+                    <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-950/30 flex items-center justify-center">
+                      <svg className="w-7 h-7 text-blue-500 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                          d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                      </svg>
+                    </div>
+                    <div className="space-y-1.5">
+                      <h2 className="text-base font-semibold text-gray-800 dark:text-[#e6edf3]">
+                        Ask anything about your document
+                      </h2>
+                      <p className="text-sm text-gray-400 dark:text-[#484f58] leading-relaxed">
+                        Upload a PDF and get instant AI-powered answers from your documents
+                      </p>
+                    </div>
+                    <div className="w-full pt-3 border-t border-gray-100 dark:border-[#21262d]">
+                      <p className="text-sm font-medium text-blue-600 dark:text-blue-400">
+                        Tap to attach a file
+                      </p>
+                      <p className="text-xs text-gray-400 dark:text-[#484f58] mt-0.5">
+                        or drag &amp; drop a PDF here · up to 5 files
+                      </p>
+                    </div>
+                  </label>
+                </>
+              )
             ) : (
               /* ── Session active: show suggestion pills ── */
               <div className="flex flex-col items-center gap-5 text-center px-6 py-8

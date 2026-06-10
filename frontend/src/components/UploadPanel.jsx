@@ -106,9 +106,12 @@ export default function UploadPanel({ onUpload, session, onReset }) {
             onChange={(e) => handleFiles(e.target.files)}
           />
           {uploading ? (
-            <div className="flex flex-col items-center gap-2">
-              <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-              <p className="text-xs text-gray-500 dark:text-[#8b949e]">Indexing…</p>
+            <div className="flex flex-col items-center gap-2.5">
+              <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+              <div>
+                <p className="text-sm font-medium text-gray-700 dark:text-[#8b949e]">Processing…</p>
+                <p className="text-xs text-gray-400 dark:text-[#484f58] mt-0.5">Indexing your document</p>
+              </div>
             </div>
           ) : docs.length > 0 ? (
             <div className="flex items-center justify-center gap-2">
